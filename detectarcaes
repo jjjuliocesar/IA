@@ -1,0 +1,50 @@
+import cv2
+import numpy as np
+import tensorflow as tf
+
+# Carregar o modelo pré-treinado do TensorFlow para detecção de objetos
+model = tf.saved_model.load('http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco/saved_model')
+
+# Função para realizar detecção de objetos
+def detect_objects(image):
+    input_tensor = tf.convert_to_tensor(image)
+    input_tensor = input_tensor[tf.newaxis, ...]
+
+    # Realiza a inferência no modelo
+    detections = model(input_tensor)
+
+    return detections['detection_boxes'], detections['detection_scores'], detections['detection_classes']
+
+# Função para cortar automaticamente cães
+def auto_crop_dogs(image_path):
+    # Ler a imagem
+    image = cv2.imread(image_path)
+    height, width, _ = image.shape
+
+    # Detectar objetos na imagem
+    boxes, scores, classes = detect_objects(image)
+
+    # Loop sobre as detecções
+    for i in range(len(scores)):
+        if scores[i] > 0.5 and int(classes[i]) == 18:  # 18 é a classe 'cachorro' no dataset COCO
+            # Coordenadas da caixa delimitadora
+            ymin, xmin, ymax, xmax = boxes[i]
+            xmin = int(xmin * width)
+            xmax = int(xmax * width)
+            ymin = int(ymin * height)
+            ymax = int(ymax * height)
+
+            # Realizar o corte da imagem
+            cropped_image = image[ymin:ymax, xmin:xmax]
+
+            # Exibir a imagem cortada
+            cv2.imshow("Cachorro Detectado", cropped_image)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
+            # Salvar a imagem cortada
+            cv2.imwrite(f"cachorro_detectado_{i}.jpg", cropped_image)
+
+# Testar a função
+image_path = 'caminho_para_sua_imagem_com_cachorro.jpg'
+auto_crop_dogs(image_path)
